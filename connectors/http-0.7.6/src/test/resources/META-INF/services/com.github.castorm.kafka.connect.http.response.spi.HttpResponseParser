@@ -1,0 +1,2 @@
+com.github.castorm.kafka.connect.http.response.KvHttpResponseParser
+com.github.castorm.kafka.connect.http.response.PolicyHttpResponseParser
