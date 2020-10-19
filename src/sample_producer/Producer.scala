@@ -5,7 +5,7 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, Produce
 import scala.util.Random
 import kafka.producer.KeyedMessage
 
-object PlayerStreamProducer extends App {
+object ScalaProducerExample extends App {
     def getRandomVal: String = {
     	val i = Random.nextInt(alphabet.size)
         val key = alphabet(i)
