@@ -1,0 +1,6 @@
+{
+  "API_KEY": "RGAPI-d7fa8d59-ce53-42b5-abeb-7c0004affc62",
+  "EXPIRY_DATE": "21/10/20 @ 12:04",
+  "ENDPOINT_MATCH_LIST_BY_ACCOUNT": "https://euw1.api.riotgames.com/lol/match/v4/matchlists/by-account/",
+  "ENDPOINT_MATCH_BY_GAME_ID": "https://euw1.api.riotgames.com/lol/match/v4/matches/"
+}
