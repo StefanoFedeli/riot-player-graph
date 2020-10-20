@@ -2,7 +2,6 @@ package scala;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
-//import org.apache.spark.streaming.kafka010._
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
 import org.apache.spark.streaming.kafka010.KafkaUtils
@@ -40,7 +39,7 @@ object KafkaSpark {
     **/
 
     // make a connection to Kafka and read (key, value) pairs from it
-     val kafkaConfig = Map[String, Object](
+    val kafkaConfig = Map[String, Object](
       "bootstrap.servers" -> "localhost:9092",
       "zookeeper.connect" -> "localhost:2181",
       "key.deserializer" -> classOf[StringDeserializer],
