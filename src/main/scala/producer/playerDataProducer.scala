@@ -1,4 +1,4 @@
-package main.scala.producer
+package scala.producer
 
 import java.util.{Date, Properties}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, ProducerConfig}
@@ -34,6 +34,8 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
       timestamp = newTimeStamp
 
       println("NEW BATCH")
+
+      Thread.sleep(150000)
     }
     producer.close()
 
@@ -46,7 +48,7 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
       val json = ujson.read(r.text)
       val maxIndex = json("endIndex").num.toInt - 1
 
-      for (index <- 0 to maxIndex){
+      for (index <- 0 to 1){//maxIndex){
         val game = json("matches")(index)("gameId").num.toLong.toString
         retrieveGameData(game)
       }
@@ -164,12 +166,11 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
 
       }
 
-      val toSubmit = ujson.Arr(
-        ujson.Obj("gameDuration" -> duration,
-                  "winner" -> winner,
-                  "bans" -> bannedChamps,
-                  "edges" -> edges)
-      )
+      val toSubmit = ujson.Obj("gameDuration" -> duration,
+                              "winner" -> winner,
+                              "bans" -> bannedChamps,
+                              "edges" -> edges
+                            )
 
       val data = new ProducerRecord[String, String](TOPIC, summonerId, toSubmit.toString)
       producer.send(data)

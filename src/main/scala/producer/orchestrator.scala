@@ -1,14 +1,17 @@
-package main.scala.producer
+package scala.producer
 
-import java.io.FileInputStream
+import java.io.InputStream
+import scala.io.Source
 import scala.collection.mutable.ListBuffer
 import upickle.default._
 
-object orchestrator {
-  def main(args: Array[String]): Unit = {
-    val file = scala.io.Source.fromFile("src/main/scala/producer/config.json")
-    val input = try file.mkString finally file.close()
+object Orchestrator {
+  def run(): Unit = {
+
+    val stream: InputStream = getClass.getResourceAsStream("/producer_config.json")
+    val input = Source.fromInputStream( stream ).getLines.mkString
     val json = ujson.read(input)
+    stream.close()
 
     val API_KEY1 = json("API_KEY1").str
     val API_KEY2 = json("API_KEY2").str
@@ -19,7 +22,10 @@ object orchestrator {
     playerList += "rhp-9yRzNcvFJPy-PD1IlL9XvaD-gNKzDsvD5bA1dalxSg"
 
     val factory = new playerDataProducerFactory(API_KEY1, API_KEY2, ENDPOINT_MATCH_LIST_BY_ACCOUNT, ENDPOINT_MATCH_BY_GAME_ID, playerList)
-    factory.buildRetrievers()
+    /*factory.buildRetrievers()
+    println("\nProducers Ready")
     factory.queryProducers()
+    println("\nProducers Started")
+    */
   }
 }

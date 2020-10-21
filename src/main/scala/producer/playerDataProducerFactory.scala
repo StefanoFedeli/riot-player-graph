@@ -1,4 +1,4 @@
-package main.scala.producer
+package scala.producer
 
 import scala.collection.mutable.ListBuffer
 
