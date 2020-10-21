@@ -15,7 +15,7 @@ object ScalaProducerExample extends App {
 
     val alphabet = 'a' to 'z'
     val events = 10000
-    val topic = "avg"
+    val topic = "matches"
     val brokers = "localhost:9092"
     val rnd = new Random()
 

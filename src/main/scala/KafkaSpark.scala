@@ -22,12 +22,22 @@ import com.datastax.spark.connector.streaming._
 */
 
 object KafkaSpark {
+
+  private def extractMetaData(json: String) : String = {
+    return json.split(",")(0)
+  }
+
+  private def extractData(json: String) : Long = {
+    return json.split(",")(1).toLong
+  }
+
   def main(args: Array[String]) {
 
     //Creating the SparkStreaming context
     val sparkSession = SparkSession.builder
       .master("local[*]")
       .appName("RiotLOLGraph")
+      .config("spark.streaming.stopGracefullyOnShutdown", "true")
       .getOrCreate()
 
     val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Minutes(1))
@@ -57,19 +67,26 @@ object KafkaSpark {
     val vertex = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertex.csv")
     val edges = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges.csv")
 
-    val matchesStream: DStream[String] = kafkaRawStream.map(newRecord => newRecord.key)
-    val recordsCount: DStream[Long] = matchesStream.count()
+    val metaStream: DStream[String] = kafkaRawStream.map(newRecord => extractMetaData(newRecord.value)).window(Minutes(2))
+    metaStream.print()
 
-    /** measure the average value for each key in a stateful manner
+    val metaStream2m : DStream[String] = metaStream.window(Minutes(2))
+    metaStream2m.print()
+
+
+    val coreStream: DStream[Long] = kafkaRawStream.map(newRecord => extractData(newRecord.value))
+    coreStream.print()
+    
+
+    /* measure the average value for each key in a stateful manner
     def mappingFunc(key: String, value: Option[Double], state: State[Double]): (String, Double) = {
 	    <FILL IN>
     }
-    val stateDstream = pairs.mapWithState(<FILL IN>)
+    val stateDstream = matchesStream.mapWithState(StateSpec.function(mappingFunc)))
 
     // store the result in Cassandra
     stateDstream.<FILL IN>
     **/
-    recordsCount.print()
 
     sparkStreamingContext.start()
     sparkStreamingContext.awaitTermination()
