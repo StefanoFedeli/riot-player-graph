@@ -22,10 +22,10 @@ object Orchestrator {
     playerList += "rhp-9yRzNcvFJPy-PD1IlL9XvaD-gNKzDsvD5bA1dalxSg"
 
     val factory = new playerDataProducerFactory(API_KEY1, API_KEY2, ENDPOINT_MATCH_LIST_BY_ACCOUNT, ENDPOINT_MATCH_BY_GAME_ID, playerList)
-    /*factory.buildRetrievers()
+    factory.buildRetrievers()
     println("\nProducers Ready")
     factory.queryProducers()
     println("\nProducers Started")
-    */
+
   }
 }

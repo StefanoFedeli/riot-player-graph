@@ -16,7 +16,10 @@ import org.apache.spark.streaming._
 
 import scala.collection.immutable.HashMap
 
-import com.datastax.driver.core.{Session, Cluster}
+import org.apache.spark.sql.cassandra._
+import com.datastax.spark.connector._
+import com.datastax.driver.core.{Session, Cluster, Host, Metadata}
+import com.datastax.spark.connector.streaming._
 //import java.util.{Date, Properties}
 //import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, ProducerConfig}
 
@@ -27,10 +30,13 @@ import com.datastax.driver.core.{Session, Cluster, Host, Metadata}
 import com.datastax.spark.connector.streaming._
 */
 
+import scala.collection.mutable._
+
 object KafkaSpark {
 
-  def mappingFunc(key: Int, value: Option[Match], state: State[championState]): Map[String,Int] = {
+  def mappingFunc(key: String, value: Option[Int], state: State[HashMap[String, Int]]): (String, Int) = {
     //Update Map of champions
+    /*
     val champs : championState = state.getOption.getOrElse(championState(new Map[String,Int]()))
     val chall = value.getOrElse(null)
     var finalMap: Map[String,Int] = new Map[String,Int]() 
@@ -44,6 +50,14 @@ object KafkaSpark {
     print(champs.championMapping)
     var out = new Map[String,Int]()
     return out
+    */
+
+    val oldState = state.getOption.getOrElse(new HashMap[String, Int]())
+    var newState = oldState
+    val oldValue: Int = oldState.getOrElse(key, 0)
+    newState += key -> (oldValue + value.getOrElse(0))
+    state.update(newState)
+    return (key, oldValue + value.getOrElse(0))
   }
 
   def main(args: Array[String]) {
@@ -65,8 +79,8 @@ object KafkaSpark {
     val session = cluster.connect()
 
     session.execute("CREATE KEYSPACE IF NOT EXISTS riot WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor':1};")
-    session.execute("CREATE TABLE IF NOT EXISTS riot.stats ( slot timestamp PRIMARY KEY, duration float, red_win int, tot_matches int)")
-    session.execute("CREATE COLUMNFAMILY IF NOT EXISTS riot.stats ( champion text PRIMARY KEY, count bigint)")
+    session.execute("CREATE TABLE IF NOT EXISTS riot.stats ( slot timestamp PRIMARY KEY, duration float, red_win int, tot_matches int);")
+    session.execute("CREATE TABLE IF NOT EXISTS riot.champ ( champion text PRIMARY KEY, count bigint);")
 
     // make a connection to Kafka and read (key, value) pairs from it
     val kafkaConfig = Map[String, Object](
@@ -83,11 +97,23 @@ object KafkaSpark {
     )
 
 
-    val vertex = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertex.csv")
-    val edges = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges.csv")
+    //val vertex = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertex.csv")
+    //val edges = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges.csv")
+  //
 
-    val metaStream: DStream[Map[String,Int]] = kafkaRawStream.map(newRecord => (1,new Match(newRecord.value))).mapWithState(StateSpec.function(mappingFunc _))
+    val metaStream: DStream[(String, Int)] = kafkaRawStream.map(newRecord => new Match(newRecord.value)).map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
+    println("------")
     metaStream.print()
+    println("------")
+    metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
+
+    /*
+    val tuples: DStream[List[(String, Int)]] = metaStream.flatMap(l => l)
+    println("------")
+    tuples.print()
+    println("------")
+     */
+
 
     //val metaStream2m : DStream[String] = metaStream.window(Minutes(2))
     //metaStream2m.print()
