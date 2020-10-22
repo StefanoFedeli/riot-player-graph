@@ -10,7 +10,7 @@ import org.apache.spark.streaming.kafka010.KafkaUtils
 import org.apache.spark.streaming.dstream.InputDStream
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.{Dataset, DataFrame}
 import org.apache.spark.graphx.Edge
 import org.apache.spark.streaming._
 
@@ -52,7 +52,8 @@ object KafkaSpark {
       .config("spark.streaming.stopGracefullyOnShutdown", "true")
       .config("spark.cassandra.connection.host", "localhost")
       .getOrCreate()
-    val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Minutes(1))
+    //val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Minutes(1))
+    val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Seconds(10))
 
     //Run the Kafka producers
     Orchestrator.run()
@@ -87,12 +88,53 @@ object KafkaSpark {
     val metaStream: DStream[(String, Int)] = matchList.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
     metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
 
-    val edgeList: DStream[(Int,MatchEdge)] = matchList.map(m => m.link).flatMap(e => e).map(edge => (1,edge))
+    val edgeList: DStream[String] = matchList.map(m => m.link).flatMap(e => e).map(edge => edge.toString)
     edgeList.print()
+
     /*******************************************
-    //TODO: Append edgeList._2 in hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges.csv
+    //TODO: Append edgeList in hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/edges
     ***************************************/
 
+    /*
+    edgeList.foreachRDD(rdd => {
+      import sparkSession.implicits._
+      val ds = sparkSession.createDataset(rdd)
+      ds.write.mode("append").text("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot")
+
+      }
+    )
+
+     */
+
+    val sqlContext = new org.apache.spark.sql.SQLContext(sparkSession.sparkContext)
+    import sqlContext.implicits._
+
+    edgeList.foreachRDD(rdd => {
+      rdd.foreach(println)
+      if (!rdd.isEmpty()) {
+        rdd.toDF().coalesce(1).write.mode("append").save("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/")
+      }
+
+    })
+
+
+    //rdd.repartition(1)
+    //edgeList.saveAsTextFiles("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges", "csv")
+    //var toSave:Dataset[String] = sparkSession.emptyDataset[String]
+    /*
+    println("EACH DS")
+    println(ds)
+    toSave.union(ds)
+    //df.write.format("parquet").mode("append").save(s"hdfs://127.0.0.1:9000/user/dataintensive/graph-riot")
+
+     */
+
+
+    /*
+    println("TOSAVE DS")
+    println(toSave)
+    toSave.write.mode("append").text(s"hdfs://127.0.0.1:9000/user/dataintensive/graph-riot")
+     */
 
     // Start the Spark Job
     sparkStreamingContext.checkpoint("./checkpoints")
