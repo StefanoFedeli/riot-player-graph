@@ -12,6 +12,7 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
 
   //var timestamp: Long = System.currentTimeMillis - 3600000
   var timestamp: Long = 0
+  val myID = summonerId
 
 
   val props = new Properties()
@@ -153,15 +154,15 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
           }
 
           val content: (String, String) = mapping.getOrElse(p("participantId").num.toInt.toString, ("", ""))
-          val toAdd = ujson.Obj("summonerId" -> content._1,
-                                "summonerName" -> content._2,
-                                "myChampionId" -> myChampId,
+          if (content._1 != myID) {
+            val toAdd = ujson.Obj("summonerId" -> content._1, "summonerName" -> content._2,
+                                "myChampionId" -> myChampId, "mySummonerID" -> myID,
                                 "hisChampionId" -> p("championId").num.toInt.toString,
-                                "outcome" -> outcome,
-                                "competition" -> competition
-          )
-
-          edges += toAdd
+                                "outcome" -> outcome, "competition" -> competition
+            )
+            edges += toAdd
+          }
+          
         }
 
       }

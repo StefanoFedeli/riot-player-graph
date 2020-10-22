@@ -35,23 +35,6 @@ import scala.collection.mutable._
 object KafkaSpark {
 
   def mappingFunc(key: String, value: Option[Int], state: State[HashMap[String, Int]]): (String, Int) = {
-    //Update Map of champions
-    /*
-    val champs : championState = state.getOption.getOrElse(championState(new Map[String,Int]()))
-    val chall = value.getOrElse(null)
-    var finalMap: Map[String,Int] = new Map[String,Int]() 
-    if (chall != null) {
-      for (id: String <- chall.banList) {
-        var num = champs.championMapping.get(id)
-        finalMap = champs.championMapping + (id -> (num+1))
-      }
-    }
-    
-    print(champs.championMapping)
-    var out = new Map[String,Int]()
-    return out
-    */
-
     val oldState = state.getOption.getOrElse(new HashMap[String, Int]())
     var newState = oldState
     val oldValue: Int = oldState.getOrElse(key, 0)
@@ -69,15 +52,14 @@ object KafkaSpark {
       .config("spark.streaming.stopGracefullyOnShutdown", "true")
       .config("spark.cassandra.connection.host", "localhost")
       .getOrCreate()
-
     val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Minutes(1))
 
+    //Run the Kafka producers
     Orchestrator.run()
 
-    // connect to Cassandra and make a keyspace and table as explained in the document
+    // connect to Cassandra and make a keyspace and tables
     val cluster = Cluster.builder().addContactPoint("127.0.0.1").build()
     val session = cluster.connect()
-
     session.execute("CREATE KEYSPACE IF NOT EXISTS riot WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor':1};")
     session.execute("CREATE TABLE IF NOT EXISTS riot.stats ( slot timestamp PRIMARY KEY, duration float, red_win int, tot_matches int);")
     session.execute("CREATE TABLE IF NOT EXISTS riot.champ ( champion text PRIMARY KEY, count bigint);")
@@ -99,40 +81,20 @@ object KafkaSpark {
 
     //val vertex = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertex.csv")
     //val edges = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges.csv")
-  //
 
-    val metaStream: DStream[(String, Int)] = kafkaRawStream.map(newRecord => new Match(newRecord.value)).map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
-    println("------")
-    metaStream.print()
-    println("------")
+    val matchList: DStream[Match] = kafkaRawStream.map(newRecord => new Match(newRecord.value))
+  
+    val metaStream: DStream[(String, Int)] = matchList.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
     metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
 
-    /*
-    val tuples: DStream[List[(String, Int)]] = metaStream.flatMap(l => l)
-    println("------")
-    tuples.print()
-    println("------")
-     */
+    val edgeList: DStream[(Int,MatchEdge)] = matchList.map(m => m.link).flatMap(e => e).map(edge => (1,edge))
+    edgeList.print()
+    /*******************************************
+    //TODO: Append edgeList._2 in hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges.csv
+    ***************************************/
 
 
-    //val metaStream2m : DStream[String] = metaStream.window(Minutes(2))
-    //metaStream2m.print()
-
-
-    //val coreStream: DStream[Long] = kafkaRawStream.map(newRecord => newRecord.value)
-    //coreStream.print()
-    
-
-    /* measure the average value for each key in a stateful manner
-    def mappingFunc(key: String, value: Option[Double], state: State[Double]): (String, Double) = {
-	    <FILL IN>
-    }
-    val stateDstream = matchesStream.mapWithState(StateSpec.function(mappingFunc)))
-
-    // store the result in Cassandra
-    stateDstream.<FILL IN>
-    **/
-
+    // Start the Spark Job
     sparkStreamingContext.checkpoint("./checkpoints")
     sparkStreamingContext.start()
     sparkStreamingContext.awaitTermination()
