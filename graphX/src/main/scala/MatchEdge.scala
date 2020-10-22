@@ -1,0 +1,3 @@
+class MatchEdge(rawJson : String) {
+    
+}
