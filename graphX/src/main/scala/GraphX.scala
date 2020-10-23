@@ -34,7 +34,7 @@ object graphx {
     val sc = sparkSession.sparkContext
 
     import sparkSession.implicits._
-    val file : Dataset[(Long,Long,String,String,String,Boolean)] = sparkSession.read.format("csv").schema(getSchema()).load("hdfs://127.0.0.1:9000/user/stefano/graph-riot").as[(Long,Long,String,String,String,Boolean)]
+    val file : Dataset[(Long,Long,String,String,String,Boolean)] = sparkSession.read.format("csv").schema(getSchema()).load("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot").as[(Long,Long,String,String,String,Boolean)]
 
     val edgesRDD: RDD[Edge[(String,String,String,Boolean)]] = file.map(str => new Edge(str._1,str._2,(str._3,str._4,str._5,str._6) )).rdd
 
@@ -47,7 +47,7 @@ object graphx {
     //val neo = Neo4j(sc)
     //neo.saveGraph(graph, "matches")
     println("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
-    Neo4jGraph.saveGraph(sc,subgraph,"value",("CHALLENGE","data"),Some(("USER","id"),("USER","value")),Some(("USER","id")))
+    Neo4jGraph.saveGraph(sc,subgraph,"rank",("CHALLENGE","data"),Some(("USER","id")),Some(("USER","id")),merge=true)
     println("Saved")
     println("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
 
