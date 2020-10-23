@@ -88,7 +88,7 @@ object KafkaSpark {
     val metaStream: DStream[(String, Int)] = matchList.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
     metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
 
-    val edgeList: DStream[String] = matchList.map(m => m.link).flatMap(e => e).map(edge => edge.toString)
+    val edgeList: DStream[(Long,Long,String,String,String,Boolean)] = matchList.map(m => m.link).flatMap(e => e).map(edge => edge.toTuple)
     edgeList.print()
 
     /*******************************************
@@ -103,20 +103,15 @@ object KafkaSpark {
 
       }
     )
-
-     */
-
-    val sqlContext = new org.apache.spark.sql.SQLContext(sparkSession.sparkContext)
-    import sqlContext.implicits._
-
+  */
     edgeList.foreachRDD(rdd => {
       rdd.foreach(println)
       if (!rdd.isEmpty()) {
-        rdd.toDF().coalesce(1).write.mode("append").save("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/")
+        import sparkSession.implicits._
+        sparkSession.createDataset(rdd).write.option("header", "true").format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/")
       }
 
     })
-
 
     //rdd.repartition(1)
     //edgeList.saveAsTextFiles("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges", "csv")

@@ -49,9 +49,10 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
       val json = ujson.read(r.text)
       val maxIndex = json("endIndex").num.toInt - 1
 
-      for (index <- 0 to 1){//maxIndex){
+      for (index <- 0 to 5){//maxIndex){
         val game = json("matches")(index)("gameId").num.toLong.toString
         retrieveGameData(game)
+        Thread.sleep(11000)
       }
     }
     else {

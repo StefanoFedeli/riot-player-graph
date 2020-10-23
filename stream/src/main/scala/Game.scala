@@ -1,6 +1,8 @@
 package scala
 
 import scala.collection.mutable.ListBuffer
+import scala.util.hashing.MurmurHash3
+
 import ujson.Obj
 
 class Player {
@@ -29,21 +31,23 @@ class Match (rawJson : String) extends Serializable {
 @SerialVersionUID(100L)
 class MatchEdge(rawJson: String) extends Serializable {
 
-    private var json = ujson.read(rawJson)
-    json = if (json.isInstanceOf[Obj]) json else json(0)
-
-    val src: String = json("mySummonerID").str.toString
-    val dst: String = json("summonerId").str.toString
+    private val json = ujson.read(rawJson)
+    val src: Long = MurmurHash3.stringHash(json("mySummonerID").str.toString)
+    val dst: Long = MurmurHash3.stringHash(json("summonerId").str.toString)
     val srcChamp: String = json("myChampionId").str.toString
     val dstChamp: String = json("hisChampionId").str.toString
     val win: Boolean = if(json("hisChampionId").str.toString == "Fail") false else true
     val side: String = json("competition").str.toString
     
     // Overriding tostring method 
-    override def toString() : String = { 
-          
-        return src + " " + dst + " " + json; 
-    } 
+    override def toString() : String = {
+        return src + "," + dst + "," + srcChamp + "," + dstChamp + "," + win + "," + side; 
+    }
+
+    def toTuple() : (Long,Long,String,String,String,Boolean) = { 
+        return (src,dst,srcChamp,dstChamp,side,win) 
+    }
+    
 }
 
 case class championState(championMapping : Map[String,Int]) {
