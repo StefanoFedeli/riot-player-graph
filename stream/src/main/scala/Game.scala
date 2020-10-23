@@ -36,7 +36,7 @@ class MatchEdge(rawJson: String) extends Serializable {
     val dst: Long = MurmurHash3.stringHash(json("summonerId").str.toString)
     val srcChamp: String = json("myChampionId").str.toString
     val dstChamp: String = json("hisChampionId").str.toString
-    val win: Boolean = if(json("hisChampionId").str.toString == "Fail") false else true
+    val win: Boolean = if(json("outcome").str.toString == "Fail") false else true
     val side: String = json("competition").str.toString
     
     // Overriding tostring method 
