@@ -34,6 +34,15 @@ import scala.collection.mutable._
 
 object KafkaSpark {
 
+  var systime: Long = System.currentTimeMillis
+
+  def getSystemTime(reset: Boolean) : Long = {
+    if (reset) {
+      systime = System.currentTimeMillis
+    }
+    return systime
+  }
+
   def mappingFunc(key: String, value: Option[Int], state: State[HashMap[String, Int]]): (String, Int) = {
     val oldState = state.getOption.getOrElse(new HashMap[String, Int]())
     var newState = oldState
@@ -52,7 +61,7 @@ object KafkaSpark {
       .config("spark.cassandra.connection.host", "localhost")
       .getOrCreate()
     //val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Minutes(1))
-    val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Seconds(10))
+    val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Seconds(30))
 
     //Run the Kafka producers
     Orchestrator.run()
@@ -80,9 +89,17 @@ object KafkaSpark {
 
     //Save the data to Cassandra
     val matchList: DStream[Match] = kafkaRawStream.map(newRecord => new Match(newRecord.value))
-  
+    
     val metaStream: DStream[(String, Int)] = matchList.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
     metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
+
+    val matchesAgg: DStream[Match] = matchList.window(Minutes(5))
+    val durationAvg: DStream[(Long, Float)] = matchesAgg.map(m => m.duration).reduce((x,y) => x + y).map(tot => (getSystemTime(true),tot))
+    val winRedTeam: DStream[(Long, Long)] = matchesAgg.filter(m => m.winTeam == "Red").count().map(tot => (getSystemTime(false),tot))
+    val totalMatches: DStream[(Long, Long)] = matchesAgg.count().map(tot => (getSystemTime(false),tot))
+    durationAvg.saveToCassandra("riot","stats",SomeColumns("slot", "duration"))
+    winRedTeam.saveToCassandra("riot","stats",SomeColumns("slot", "red_win"))
+    totalMatches.saveToCassandra("riot","stats",SomeColumns("slot", "tot_matches"))
 
 
     //Get Edges
