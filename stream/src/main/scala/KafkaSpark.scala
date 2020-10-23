@@ -49,7 +49,6 @@ object KafkaSpark {
     val sparkSession = SparkSession.builder
       .master("local[*]")
       .appName("RiotLOLGraph")
-      .config("spark.streaming.stopGracefullyOnShutdown", "true")
       .config("spark.cassandra.connection.host", "localhost")
       .getOrCreate()
     //val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Minutes(1))
@@ -79,57 +78,25 @@ object KafkaSpark {
       Subscribe[String, String](kafkaTopics, kafkaConfig)
     )
 
-
-    //val vertex = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertex.csv")
-    //val edges = sparkSession.read.csv("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges.csv")
-
+    //Save the data to Cassandra
     val matchList: DStream[Match] = kafkaRawStream.map(newRecord => new Match(newRecord.value))
   
     val metaStream: DStream[(String, Int)] = matchList.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
     metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
 
+
+    //Get Edges
     val edgeList: DStream[(Long,Long,String,String,String,Boolean)] = matchList.map(m => m.link).flatMap(e => e).map(edge => edge.toTuple)
     edgeList.print()
 
-    /*******************************************
-    //TODO: Append edgeList in hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/edges
-    ***************************************/
-
-    /*
-    edgeList.foreachRDD(rdd => {
-      import sparkSession.implicits._
-      val ds = sparkSession.createDataset(rdd)
-      ds.write.mode("append").text("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot")
-
-      }
-    )
-  */
+    //Append edgeList in hdfs
     edgeList.foreachRDD(rdd => {
       rdd.foreach(println)
       if (!rdd.isEmpty()) {
         import sparkSession.implicits._
-        sparkSession.createDataset(rdd).write.option("header", "true").format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/")
+        sparkSession.createDataset(rdd).write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/")
       }
-
     })
-
-    //rdd.repartition(1)
-    //edgeList.saveAsTextFiles("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges", "csv")
-    //var toSave:Dataset[String] = sparkSession.emptyDataset[String]
-    /*
-    println("EACH DS")
-    println(ds)
-    toSave.union(ds)
-    //df.write.format("parquet").mode("append").save(s"hdfs://127.0.0.1:9000/user/dataintensive/graph-riot")
-
-     */
-
-
-    /*
-    println("TOSAVE DS")
-    println(toSave)
-    toSave.write.mode("append").text(s"hdfs://127.0.0.1:9000/user/dataintensive/graph-riot")
-     */
 
     // Start the Spark Job
     sparkStreamingContext.checkpoint("./checkpoints")
