@@ -108,7 +108,7 @@ object KafkaSpark {
       rdd.foreach(println)
       if (!rdd.isEmpty()) {
         import sparkSession.implicits._
-        sparkSession.createDataset(rdd).write.option("header", "true").format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/")
+        sparkSession.createDataset(rdd).write.option("header", "true").format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/")
       }
 
     })

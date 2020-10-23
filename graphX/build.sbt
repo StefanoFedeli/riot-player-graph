@@ -4,6 +4,8 @@ version := "1.0"
 
 scalaVersion := "2.11.8"
 
+fork in run := true
+
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.4.5",
   "org.apache.spark" % "spark-streaming_2.11" % "2.4.5",

@@ -8,7 +8,7 @@ import ujson.Value
 import scala.math.BigInt
 import scala.collection.mutable._
 
-class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOINT_MATCH_LIST_BY_ACCOUNT: String, val ENDPOINT_MATCH_BY_GAME_ID: String, val summonerId: String) extends Thread{
+class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOINT_MATCH_LIST_BY_ACCOUNT: String, val ENDPOINT_MATCH_BY_GAME_ID: String, val ENDPOINT_NAME_BY_ACCOUNT: String, val summonerId: String) extends Thread{
 
   //var timestamp: Long = System.currentTimeMillis - 3600000
   var timestamp: Long = 0
@@ -51,7 +51,12 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
 
       for (index <- 0 to 5){//maxIndex){
         val game = json("matches")(index)("gameId").num.toLong.toString
-        retrieveGameData(game)
+        val r2 = requests.get(ENDPOINT_NAME_BY_ACCOUNT + summonerId + "?api_key=" + API_KEY1)
+        if (r2.statusCode < 400) {
+          val json2 = ujson.read(r2.text)
+          val name = json2("name").str
+          retrieveGameData(game, name)
+        }
         Thread.sleep(11000)
       }
     }
@@ -61,7 +66,7 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
     }
   }
 
-  def retrieveGameData(gameId: String): Unit = {
+  def retrieveGameData(gameId: String, summonerName: String): Unit = {
     val r = requests.get(ENDPOINT_MATCH_BY_GAME_ID + gameId + "?api_key=" + API_KEY2)
     if (r.statusCode < 400) {
       val json = ujson.read(r.text)
@@ -114,19 +119,18 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
       }
 
       var myParticipantId = ""
-      var myTeamId = ""
       for (p: ujson.Value <- players) {
-        if (p("player")("summonerId").str == summonerId) {
+        if (p("player")("summonerName").str == summonerName) {
           myParticipantId = p("participantId").num.toInt.toString
-          myTeamId = p("teamId").num.toInt.toString
-
         }
       }
 
       var myChampId = ""
+      var myTeamId = ""
       for (p: ujson.Value <- participants){
-        if (p("participantId").num.toInt.toString != myParticipantId){
+        if (p("participantId").num.toInt.toString == myParticipantId){
           myChampId = p("championId").num.toInt.toString
+          myTeamId = p("teamId").num.toInt.toString
         }
       }
 
@@ -155,7 +159,7 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
           }
 
           val content: (String, String) = mapping.getOrElse(p("participantId").num.toInt.toString, ("", ""))
-          if (content._1 != myID) {
+          if (content._2 != summonerName) {
             val toAdd = ujson.Obj("summonerId" -> content._1, "summonerName" -> content._2,
                                 "myChampionId" -> myChampId, "mySummonerID" -> myID,
                                 "hisChampionId" -> p("championId").num.toInt.toString,
@@ -174,7 +178,7 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
                               "edges" -> edges
                             )
 
-      val data = new ProducerRecord[String, String](TOPIC, summonerId, toSubmit.toString)
+      val data = new ProducerRecord[String, String](TOPIC, summonerName, toSubmit.toString)
       producer.send(data)
     }
     else {

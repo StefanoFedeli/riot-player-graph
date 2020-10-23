@@ -30,10 +30,10 @@ object graphx {
     val sc = sparkSession.sparkContext
 
     import sparkSession.implicits._
-    val file : Dataset[(Long,Long,String,String,String,Boolean)] = sparkSession.read.format("csv").option("header", "true").schema(getSchema()).load("hdfs://127.0.0.1:9000/user/stefano/graph-riot").as[(Long,Long,String,String,String,Boolean)]
+    val file : Dataset[(Long,Long,String,String,String,Boolean)] = sparkSession.read.format("csv").option("header", "true").schema(getSchema()).load("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot").as[(Long,Long,String,String,String,Boolean)]
     file.show()
 
-    val edgesRDD: RDD[Edge[(String,String,String,Boolean)]] = file.map(str => new Edge(str._1,str._2,(str._3,str._4,str._5,str._6) )).rdd
+    val edgesRDD: RDD[Edge[(String,String,String,Boolean)]] = file.map(str => new Edge(str._1,str._2,(str._3,str._4,str._5,str._6))).rdd
     //val file = Source.fromInputStream(getClass.getResourceAsStream("/edges.csv"))
 
     /* create edge RDD of type RDD[(VertexId, VertexId)]
@@ -47,5 +47,6 @@ object graphx {
 
     // you can see your graph 
     graph.triplets.collect.foreach(println)
+    sc.stop()
   }
 }
