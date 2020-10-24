@@ -57,16 +57,17 @@ object graphx {
     println("DI CUI TRACCIATI: " + graph.vertices.filter{ case (id,(name,track)) => track == true}.count())
 
 
-    val littlegraph = graph.mapEdges(ed => ed.attr.get("Side").getOrElse("Error"))
+    val winsGraph = graph.outerJoinVertices(graph.inDegrees) {
+      case (id, old, wins) => (old._1,old._2,wins.getOrElse(0)/5)
+    }
     val subsubgraph = graph.subgraph(vpred = (id, attr) => attr._2 == true)
     println(subsubgraph.numVertices)
-    subsubgraph.inDegrees.foreach( vx => println(vx._2))
     println(subsubgraph.inDegrees.count)
 
-    /*Save result on Neo4J
+    //Save result on Neo4J
     Neo4jGraph.saveGraph(sc,graph,"rank",("CHALLENGE","data"),Some(("USER","id")),Some(("USER","id")),merge=true)
     println("Saved")
-*/
+
     sc.stop()
   }
 }
