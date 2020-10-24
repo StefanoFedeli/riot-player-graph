@@ -8,12 +8,10 @@ import ujson.Value
 import scala.math.BigInt
 import scala.collection.mutable._
 
-class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOINT_MATCH_LIST_BY_ACCOUNT: String, val ENDPOINT_MATCH_BY_GAME_ID: String, val ENDPOINT_NAME_BY_ACCOUNT: String, val summonerId: String) extends Thread{
+class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOINT_MATCH_LIST_BY_ACCOUNT: String, val ENDPOINT_MATCH_BY_GAME_ID: String, val ENDPOINT_NAME_BY_ACCOUNT: String, val summonerId: String, val summonerName: String) extends Thread{
 
   //var timestamp: Long = System.currentTimeMillis - 3600000
   var timestamp: Long = 0
-  val myID = summonerId
-
 
   val props = new Properties()
   props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
@@ -44,30 +42,32 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
   }
 
   def retrieveGames(beginTime: String): Unit = {
-    val r = requests.get(ENDPOINT_MATCH_LIST_BY_ACCOUNT + summonerId + "?beginTime=" + beginTime + "&api_key=" + API_KEY1)
+    val r = requests.get(ENDPOINT_MATCH_LIST_BY_ACCOUNT + summonerId + "?queue=420&beginTime=" + beginTime + "&api_key=" + API_KEY2)
+    Thread.sleep(1200)
     if (r.statusCode < 400) {
       val json = ujson.read(r.text)
       val maxIndex = json("endIndex").num.toInt - 1
 
       for (index <- 0 to 5){//maxIndex){
         val game = json("matches")(index)("gameId").num.toLong.toString
-        val r2 = requests.get(ENDPOINT_NAME_BY_ACCOUNT + summonerId + "?api_key=" + API_KEY1)
-        if (r2.statusCode < 400) {
-          val json2 = ujson.read(r2.text)
-          val name = json2("name").str
-          retrieveGameData(game, name)
-        }
+        println("MATCHLIST")
+        println(json)
+        println("MATCHLIST")
+        retrieveGameData(game)
+
         Thread.sleep(11000)
       }
     }
     else {
+      println("ERRRRRROR")
       println(r.statusCode)
       println(r.text)
     }
   }
 
-  def retrieveGameData(gameId: String, summonerName: String): Unit = {
-    val r = requests.get(ENDPOINT_MATCH_BY_GAME_ID + gameId + "?api_key=" + API_KEY2)
+  def retrieveGameData(gameId: String): Unit = {
+    val r = requests.get(ENDPOINT_MATCH_BY_GAME_ID + gameId + "?api_key=" + API_KEY1)
+    Thread.sleep(1200)
     if (r.statusCode < 400) {
       val json = ujson.read(r.text)
       val players = json("participantIdentities").arr
@@ -160,8 +160,8 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
 
           val content: (String, String) = mapping.getOrElse(p("participantId").num.toInt.toString, ("", ""))
           if (content._2 != summonerName) {
-            val toAdd = ujson.Obj("summonerId" -> content._1, "summonerName" -> content._2,
-                                "myChampionId" -> myChampId, "mySummonerID" -> myID,
+            val toAdd = ujson.Obj("hisSummonerId" -> content._1, "hisSummonerName" -> content._2,
+                                "myChampionId" -> myChampId, "mySummonerID" -> summonerId, "mySummonerName" -> summonerName,
                                 "hisChampionId" -> p("championId").num.toInt.toString,
                                 "outcome" -> outcome, "competition" -> competition
             )

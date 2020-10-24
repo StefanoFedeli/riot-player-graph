@@ -32,8 +32,8 @@ class Match (rawJson : String) extends Serializable {
 class MatchEdge(rawJson: String) extends Serializable {
 
     private val json = ujson.read(rawJson)
-    val src: Long = MurmurHash3.stringHash(json("mySummonerID").str.toString)
-    val dst: Long = MurmurHash3.stringHash(json("summonerId").str.toString)
+    val src: Long = MurmurHash3.stringHash(json("mySummonerName").str.toString)
+    val dst: Long = MurmurHash3.stringHash(json("hisSummonerName").str.toString)
     val srcChamp: String = json("myChampionId").str.toString
     val dstChamp: String = json("hisChampionId").str.toString
     val win: Boolean = if(json("outcome").str.toString == "Fail") false else true
@@ -44,7 +44,7 @@ class MatchEdge(rawJson: String) extends Serializable {
         return src + "," + dst + "," + srcChamp + "," + dstChamp + "," + win + "," + side; 
     }
 
-    def toTuple() : (Long,Long,String,String,String,Boolean) = { 
+    def toTuple() : (Long,Long,String,String,String,Boolean) = {
         return (src,dst,srcChamp,dstChamp,side,win) 
     }
     

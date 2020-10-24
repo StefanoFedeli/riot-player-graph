@@ -89,6 +89,7 @@ object KafkaSpark {
 
     //Save the data to Cassandra
     val matchList: DStream[Match] = kafkaRawStream.map(newRecord => new Match(newRecord.value))
+    matchList.print()
     
     val metaStream: DStream[(String, Int)] = matchList.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
     metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
@@ -104,7 +105,7 @@ object KafkaSpark {
 
     //Get Edges
     val edgeList: DStream[(Long,Long,String,String,String,Boolean)] = matchList.map(m => m.link).flatMap(e => e).map(edge => edge.toTuple)
-    edgeList.print()
+    //edgeList.print()
 
     //Append edgeList in hdfs
     edgeList.foreachRDD(rdd => {

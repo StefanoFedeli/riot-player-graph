@@ -3,7 +3,8 @@ package scala.producer
 import java.io.InputStream
 import scala.io.Source
 import scala.collection.mutable.ListBuffer
-import upickle.default._
+//import upickle.default._
+import ujson.Value
 
 object Orchestrator {
   def run(): Unit = {
@@ -18,15 +19,49 @@ object Orchestrator {
     val ENDPOINT_MATCH_LIST_BY_ACCOUNT = json("ENDPOINT_MATCH_LIST_BY_ACCOUNT").str
     val ENDPOINT_MATCH_BY_GAME_ID = json("ENDPOINT_MATCH_BY_GAME_ID").str
     val ENDPOINT_NAME_BY_ACCOUNT = json("ENDPOINT_NAME_BY_ACCOUNT").str
+    val ENDPOINT_NAME_BY_DIVISION = json("ENDPOINT_NAME_BY_DIVISION").str
+    val ENDPOINT_ACCOUNT_BY_NAME = json("ENDPOINT_ACCOUNT_BY_NAME").str
 
-    val playerList = ListBuffer[String]()
-    playerList += "rhp-9yRzNcvFJPy-PD1IlL9XvaD-gNKzDsvD5bA1dalxSg"
+    val playerList: ListBuffer[String] = generatePlayerList(ENDPOINT_NAME_BY_DIVISION, API_KEY1).take(10)
+    val playerMap: Map[String, String] = generatePlayerMap(ENDPOINT_ACCOUNT_BY_NAME, API_KEY2, playerList)
 
-    val factory = new playerDataProducerFactory(API_KEY1, API_KEY2, ENDPOINT_MATCH_LIST_BY_ACCOUNT, ENDPOINT_MATCH_BY_GAME_ID, ENDPOINT_NAME_BY_ACCOUNT, playerList)
+    val factory = new playerDataProducerFactory(API_KEY1, API_KEY2, ENDPOINT_MATCH_LIST_BY_ACCOUNT, ENDPOINT_MATCH_BY_GAME_ID, ENDPOINT_NAME_BY_ACCOUNT, playerMap)
+    println("\nPreparing producers")
     factory.buildRetrievers()
     println("\nProducers Ready")
     factory.queryProducers()
     println("\nProducers Started")
 
+  }
+
+  def generatePlayerList(ENDPOINT_NAME_BY_DIVISION: String, API_KEY1: String): ListBuffer[String] = {
+    println("\nGenerating PlayerList")
+    val r = requests.get(ENDPOINT_NAME_BY_DIVISION + "&api_key=" + API_KEY1)
+    Thread.sleep(1200)
+    val playerList: ListBuffer[String] = ListBuffer[String]()
+    if (r.statusCode < 400) {
+      val json = ujson.read(r.text)
+      for (p: ujson.Value <- json.arr){
+        playerList += p("summonerName").str
+      }
+    }
+    return playerList
+  }
+
+  def generatePlayerMap(ENDPOINT_ACCOUNT_BY_NAME: String, API_KEY2: String, playerList: ListBuffer[String]): Map[String, String] = {
+    println("\nGenerating PlayerMap")
+    var playerMap: Map[String, String] = Map[String, String]()
+    var i: Int = 0
+    for (p: String <- playerList) {
+      println("\nQuerying player " + i.toString + " of " + playerList.size.toString)
+      val r = requests.get(ENDPOINT_ACCOUNT_BY_NAME + p + "?api_key=" + API_KEY2)
+      Thread.sleep(1200)
+      if (r.statusCode < 400) {
+        val json = ujson.read(r.text)
+        playerMap += (p -> json("accountId").str)
+      }
+      i += 1
+    }
+    return playerMap
   }
 }
