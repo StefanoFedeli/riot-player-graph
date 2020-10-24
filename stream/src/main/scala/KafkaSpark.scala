@@ -59,7 +59,9 @@ object KafkaSpark {
       .master("local[*]")
       .appName("RiotLOLGraph")
       .config("spark.cassandra.connection.host", "localhost")
+      .config("spark.cassandra.connection.keep_alive_ms","60000")
       .getOrCreate()
+    sparkSession.sparkContext.setLogLevel("WARN")
     //val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Minutes(1))
     val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Seconds(30))
 
@@ -67,13 +69,18 @@ object KafkaSpark {
     Orchestrator.run()
 
     // connect to Cassandra and make a keyspace and tables
+    print("Connecting to Cassandra...")
     val cluster = Cluster.builder().addContactPoint("127.0.0.1").build()
     val session = cluster.connect()
     session.execute("CREATE KEYSPACE IF NOT EXISTS riot WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor':1};")
     session.execute("CREATE TABLE IF NOT EXISTS riot.stats ( slot timestamp PRIMARY KEY, duration float, red_win int, tot_matches int);")
     session.execute("CREATE TABLE IF NOT EXISTS riot.champ ( champion text PRIMARY KEY, count bigint);")
+    session.execute("TRUNCATE riot.champ;")
+    session.execute("TRUNCATE riot.stats;")
+    println("...DONE!")
 
     // make a connection to Kafka and read (key, value) pairs from it
+    print("Connection to Kafka Broker...")
     val kafkaConfig = Map[String, Object](
       "bootstrap.servers" -> "localhost:9092",
       "key.deserializer" -> classOf[StringDeserializer],
@@ -86,34 +93,49 @@ object KafkaSpark {
       PreferConsistent,
       Subscribe[String, String](kafkaTopics, kafkaConfig)
     )
+    println("...DONE!")
 
     //Save the data to Cassandra
-    val matchList: DStream[Match] = kafkaRawStream.map(newRecord => new Match(newRecord.value))
-    matchList.print()
+    print("Retrive Data and save in Cassandra...")
+    val matches: DStream[Match] = kafkaRawStream.map(newRecord => new Match(newRecord.value))
     
-    val metaStream: DStream[(String, Int)] = matchList.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
+    val metaStream: DStream[(String, Int)] = matches.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
     metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
 
-    val matchesAgg: DStream[Match] = matchList.window(Minutes(5))
+    //Get insight in a 5 minutes stream and save the time-series
+    val matchesAgg: DStream[Match] = matches.window(Minutes(5))
     val durationAvg: DStream[(Long, Float)] = matchesAgg.map(m => m.duration).reduce((x,y) => x + y).map(tot => (getSystemTime(true),tot))
     val winRedTeam: DStream[(Long, Long)] = matchesAgg.filter(m => m.winTeam == "Red").count().map(tot => (getSystemTime(false),tot))
     val totalMatches: DStream[(Long, Long)] = matchesAgg.count().map(tot => (getSystemTime(false),tot))
     durationAvg.saveToCassandra("riot","stats",SomeColumns("slot", "duration"))
     winRedTeam.saveToCassandra("riot","stats",SomeColumns("slot", "red_win"))
     totalMatches.saveToCassandra("riot","stats",SomeColumns("slot", "tot_matches"))
+    println("...DONE! - see cassandra riot keyspace")
 
-
-    //Get Edges
-    val edgeList: DStream[(Long,Long,String,String,String,Boolean)] = matchList.map(m => m.link).flatMap(e => e).map(edge => edge.toTuple)
-    //edgeList.print()
-
+    val matchList: DStream[MatchEdge] = matches.map(m => m.link).flatMap(e => e)
+    //Get Edges 
+    val edgeList: DStream[(Long,Long,String,String,String)] = matchList.map(edge => edge.toTuple)
+    //Get Vertex
+    val vertexList: DStream[(Long,String,Boolean)] = matchList.map(edge => edge.extractVertex()).flatMap(vx => vx)
+    
+    
     //Append edgeList in hdfs
     edgeList.foreachRDD(rdd => {
-      rdd.foreach(println)
       if (!rdd.isEmpty()) {
         import sparkSession.implicits._
-        sparkSession.createDataset(rdd).write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/")
+        val toSave = sparkSession.createDataset(rdd)
+        toSave.show()
+        toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges")
       }
+    })
+
+    vertexList.foreachRDD(rdd => {
+      println("VERTEX:")
+      //rdd.foreach(println)
+      import sparkSession.implicits._
+      val toSave = sparkSession.createDataset(rdd).distinct().coalesce(1)
+      toSave.show()
+      toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertexes")
     })
 
     // Start the Spark Job

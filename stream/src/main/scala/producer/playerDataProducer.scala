@@ -32,8 +32,6 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
 
       timestamp = newTimeStamp
 
-      println("NEW BATCH")
-
       Thread.sleep(150000)
     }
     producer.close()
@@ -48,13 +46,10 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
       val json = ujson.read(r.text)
       val maxIndex = json("endIndex").num.toInt - 1
 
+      println("Player " + summonerName + " starts retriving 5 Games //TODO FIX IT FOR PRODUCTION")
       for (index <- 0 to 5){//maxIndex){
         val game = json("matches")(index)("gameId").num.toLong.toString
-        println("MATCHLIST")
-        println(json)
-        println("MATCHLIST")
         retrieveGameData(game)
-
         Thread.sleep(11000)
       }
     }
@@ -182,8 +177,6 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
       producer.send(data)
     }
     else {
-      println(r.statusCode)
-      println(r.text)
     }
   }
 

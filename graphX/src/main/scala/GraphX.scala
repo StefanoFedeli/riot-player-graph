@@ -11,13 +11,18 @@ import scala.io.Source
 
 object graphx {
 
-  def getSchema() : StructType = {
+  def getSchemaEdges() : StructType = {
         return StructType(Seq(StructField("srcID", LongType, true),
                             StructField("dstID", LongType, true),
                             StructField("srcChamp", StringType, true),
                             StructField("dstChamp", StringType, true),
-                            StructField("side", StringType, true),
-                            StructField("win", BooleanType, true)
+                            StructField("side", StringType, true)
+      ))
+  }
+  def getSchemaVertex() : StructType = {
+        return StructType(Seq(StructField("ID", LongType, true),
+                            StructField("Name", StringType, true),
+                            StructField("Tracking", BooleanType, true)
       ))
   }
   
@@ -32,25 +37,36 @@ object graphx {
       .config("spark.streaming.stopGracefullyOnShutdown", "true")
       .getOrCreate()
     val sc = sparkSession.sparkContext
+    sc.setLogLevel("WARN")
 
     import sparkSession.implicits._
-    val file : Dataset[(Long,Long,String,String,String,Boolean)] = sparkSession.read.format("csv").schema(getSchema()).load("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot").as[(Long,Long,String,String,String,Boolean)]
+    val fileEdge : Dataset[(Long,Long,String,String,String)] = sparkSession.read.format("csv").schema(getSchemaEdges()).load("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges").as[(Long,Long,String,String,String)]
+    val edgesRDD: RDD[Edge[Map[String,String]]] = fileEdge.map(str => new Edge(str._1,str._2, Map("myChampion" -> str._3,
+                                                                                              "hisChampion" -> str._4,
+                                                                                              "Side" -> str._5))).rdd
+    val fileVert : Dataset[(Long,String,Boolean)] = sparkSession.read.format("csv").schema(getSchemaVertex()).load("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertexes").as[(Long,String,Boolean)]
+    val vertsRDD: RDD[(VertexId,(String,Boolean))] = fileVert.map(str => (str._1,(str._2, str._3))).rdd
+    println("RDD Loaded from disk")
+    println("--------------------------------------------")
 
-    val edgesRDD: RDD[Edge[(String,String,String,Boolean)]] = file.map(str => new Edge(str._1,str._2,(str._3,str._4,str._5,str._6) )).rdd
 
-    //create a graph 
-    val graph = Graph.fromEdges(edgesRDD, 1)
-    val subgraph = graph.mapEdges(ed => ed.attr._2)
-    for (triplet <- subgraph.triplets.collect) {
-      println(s"${triplet.srcAttr} likes ${triplet.dstAttr}")
-    }
-    //val neo = Neo4j(sc)
-    //neo.saveGraph(graph, "matches")
-    println("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
-    Neo4jGraph.saveGraph(sc,subgraph,"rank",("CHALLENGE","data"),Some(("USER","id")),Some(("USER","id")),merge=true)
+    //create a graph, print some stats
+    val graph = Graph.apply(vertsRDD,edgesRDD,("Missing",false))
+    println("VERTICI: " + graph.vertices.count)
+    println("DI CUI MANCANTI: " + graph.vertices.filter{ case (id,(name,track)) => name == "Missing"}.count())
+    println("DI CUI TRACCIATI: " + graph.vertices.filter{ case (id,(name,track)) => track == true}.count())
+
+
+    val littlegraph = graph.mapEdges(ed => ed.attr.get("Side").getOrElse("Error"))
+    val subsubgraph = graph.subgraph(vpred = (id, attr) => attr._2 == true)
+    println(subsubgraph.numVertices)
+    subsubgraph.inDegrees.foreach( vx => println(vx._2))
+    println(subsubgraph.inDegrees.count)
+
+    /*Save result on Neo4J
+    Neo4jGraph.saveGraph(sc,graph,"rank",("CHALLENGE","data"),Some(("USER","id")),Some(("USER","id")),merge=true)
     println("Saved")
-    println("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
-
+*/
     sc.stop()
   }
 }
