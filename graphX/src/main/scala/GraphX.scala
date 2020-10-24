@@ -60,12 +60,19 @@ object graphx {
     val winsGraph = graph.outerJoinVertices(graph.inDegrees) {
       case (id, old, wins) => (old._1,old._2,wins.getOrElse(0)/5)
     }
-    val subsubgraph = graph.subgraph(vpred = (id, attr) => attr._2 == true)
-    println(subsubgraph.numVertices)
-    println(subsubgraph.inDegrees.count)
+    //graph.edges.foreach(item => print(item.attr.get("myChampion").getOrElse("").getClass))
+    val champs: List[String] = List("350", "80", "360", "40", "236")
+    val samiraSubGraph = graph.subgraph(epred = (ed) => champs.contains(ed.attr.get("hisChampion").getOrElse("")))
+    println(graph.numEdges)
+    println(samiraSubGraph.numEdges)
+    //println(subsubgraph.inDegrees.count)
+    val toDisplay1 = samiraSubGraph.mapVertices((v_id, v) => v._1)
+    val toDisplay2 = toDisplay1.mapEdges(e => e.attr.get("myChampion").getOrElse("No Champ"))
+
+
 
     //Save result on Neo4J
-    Neo4jGraph.saveGraph(sc,graph,"rank",("CHALLENGE","data"),Some(("USER","id")),Some(("USER","id")),merge=true)
+    Neo4jGraph.saveGraph(sc,toDisplay2,"name",("WINNER_WAS_PLAYING","myChampion"),Some(("USER","id")),Some(("USER","id")),merge=true)
     println("Saved")
 
     sc.stop()
