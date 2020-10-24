@@ -40,11 +40,11 @@ object graphx {
     sc.setLogLevel("WARN")
 
     import sparkSession.implicits._
-    val fileEdge : Dataset[(Long,Long,String,String,String)] = sparkSession.read.format("csv").schema(getSchemaEdges()).load("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges").as[(Long,Long,String,String,String)]
+    val fileEdge : Dataset[(Long,Long,String,String,String)] = sparkSession.read.format("csv").schema(getSchemaEdges()).load("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/edges").as[(Long,Long,String,String,String)]
     val edgesRDD: RDD[Edge[Map[String,String]]] = fileEdge.map(str => new Edge(str._1,str._2, Map("myChampion" -> str._3,
                                                                                               "hisChampion" -> str._4,
                                                                                               "Side" -> str._5))).rdd
-    val fileVert : Dataset[(Long,String,Boolean)] = sparkSession.read.format("csv").schema(getSchemaVertex()).load("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertexes").as[(Long,String,Boolean)]
+    val fileVert : Dataset[(Long,String,Boolean)] = sparkSession.read.format("csv").schema(getSchemaVertex()).load("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/vertexes").as[(Long,String,Boolean)]
     val vertsRDD: RDD[(VertexId,(String,Boolean))] = fileVert.map(str => (str._1,(str._2, str._3))).rdd
     println("RDD Loaded from disk")
     println("--------------------------------------------")

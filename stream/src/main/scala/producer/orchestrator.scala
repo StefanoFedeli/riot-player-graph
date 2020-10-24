@@ -4,7 +4,6 @@ import java.io.InputStream
 import scala.io.Source
 import scala.collection.mutable.ListBuffer
 import ujson.Value
-import scala.PlayerManager
 
 
 object Orchestrator {
@@ -47,7 +46,6 @@ object Orchestrator {
         playerList += p("summonerName").str
       }
     }
-    PlayerManager.init(playerList.take(5))
     println("DONE!")
     return playerList
   }

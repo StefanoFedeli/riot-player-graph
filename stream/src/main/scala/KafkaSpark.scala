@@ -125,7 +125,7 @@ object KafkaSpark {
         import sparkSession.implicits._
         val toSave = sparkSession.createDataset(rdd)
         toSave.show()
-        toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges")
+        toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/edges")
       }
     })
 
@@ -135,7 +135,7 @@ object KafkaSpark {
       import sparkSession.implicits._
       val toSave = sparkSession.createDataset(rdd).distinct().coalesce(1)
       toSave.show()
-      toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertexes")
+      toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/vertexes")
     })
 
     // Start the Spark Job
