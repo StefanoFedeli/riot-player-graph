@@ -36,26 +36,34 @@ df['duration'] = df['duration'] / df['tot_matches']
 
 timeline = go.Figure(data=go.Scatter(x=df['slot'], y=df['duration']))
 
+df = pd.DataFrame(session.execute('SELECT * FROM stats'))
+total_length = df["duration"].sum()
+total_matches = df["tot_matches"].sum()
+indicator = go.Figure(go.Indicator(
+    mode = "number+delta",
+    value = total_length/total_matches/60,
+    number = {'suffix': "min"},
+    delta = {'position': "top", 'reference': 25},
+    domain = {'x': [0, 1], 'y': [0, 1]}))
+indicator.update_layout(paper_bgcolor = "lightgray")
+
 app.layout = html.Div(children=[
     html.H1(children='League of Legends'),
-
-    html.Div(children='''
-        Dash: A web application framework for Python.
-    '''),
 
     dcc.Graph(
         id='Champion\'s ban ',
         figure=fig
     ),
 
-    html.Div(children='''
-        Dash: A web application framework for Python.
-    '''),
-
     dcc.Graph(
         id='duration Game',
         figure=timeline
-    )
+    ),
+
+    dcc.Graph(
+            id='duration Game2',
+            figure=indicator
+        )
 ])
 
 if __name__ == '__main__':

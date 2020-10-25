@@ -8,7 +8,7 @@ import ujson.Obj
 
 
 object Config {
-    val HADOOP_USER = "stefano"
+    val HADOOP_USER = "dataintensive"
     val PATH = "hdfs://127.0.0.1:9000/user/" + HADOOP_USER + "/graph-riot/"
 }
 

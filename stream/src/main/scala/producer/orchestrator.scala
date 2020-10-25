@@ -23,7 +23,7 @@ object Orchestrator {
     val ENDPOINT_NAME_BY_DIVISION = json("ENDPOINT_NAME_BY_DIVISION").str
     val ENDPOINT_ACCOUNT_BY_NAME = json("ENDPOINT_ACCOUNT_BY_NAME").str
 
-    val playerList: ListBuffer[String] = generatePlayerList(ENDPOINT_NAME_BY_DIVISION, API_KEY1).take(5)
+    val playerList: ListBuffer[String] = generatePlayerList(ENDPOINT_NAME_BY_DIVISION, API_KEY1).take(15)
     val playerMap: Map[String, String] = generatePlayerMap(ENDPOINT_ACCOUNT_BY_NAME, API_KEY2, playerList)
 
     val factory = new playerDataProducerFactory(API_KEY1, API_KEY2, ENDPOINT_MATCH_LIST_BY_ACCOUNT, ENDPOINT_MATCH_BY_GAME_ID, ENDPOINT_NAME_BY_ACCOUNT, playerMap)
