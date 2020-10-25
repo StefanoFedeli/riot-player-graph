@@ -13,6 +13,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % "2.4.5",
   "org.neo4j" % "neo4j-kernel" % "3.5.22",
   "org.neo4j.driver" % "neo4j-java-driver" % "1.7.5",
-  "neo4j-contrib" % "neo4j-spark-connector" % "2.4.5-M1"
+  "neo4j-contrib" % "neo4j-spark-connector" % "2.4.5-M1",
+  ("com.datastax.spark" %% "spark-cassandra-connector" % "2.4.2").exclude("io.netty", "netty-handler")
   //"neo4j-contrib" % "neo4j-spark-connector" % "4.0.0"
 )

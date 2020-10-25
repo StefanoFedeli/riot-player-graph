@@ -7,6 +7,9 @@ import org.apache.spark.sql.{Dataset, SparkSession, DataFrame}
 import org.apache.spark.sql.types.{StructField, StructType, StringType, LongType, BooleanType}
 import org.neo4j.spark._
 
+import com.datastax.spark.connector._
+import com.datastax.driver.core.{Session, Cluster, Host, Metadata}
+
 import scala.io.Source
 
 object graphx {
@@ -35,6 +38,8 @@ object graphx {
       .config("spark.neo4j.password", "riotintensive")
       .config("spark.neo4j.user", "neo4j")
       .config("spark.streaming.stopGracefullyOnShutdown", "true")
+      .config("spark.cassandra.connection.host", "localhost")
+      .config("spark.cassandra.connection.keep_alive_ms","60000")
       .getOrCreate()
     val sc = sparkSession.sparkContext
     sc.setLogLevel("WARN")
@@ -61,6 +66,10 @@ object graphx {
       case (id, old, wins) => (old._1,old._2,wins.getOrElse(0)/5)
     }
     //graph.edges.foreach(item => print(item.attr.get("myChampion").getOrElse("").getClass))
+
+    println(sc.cassandraTable("riot", "champ").as((String, Int)).first())
+    //"SELECT champion from riot.champ ORDER BY count DESC LIMIT 5"
+
     val champs: List[String] = List("350", "80", "360", "40", "236")
     val samiraSubGraph = graph.subgraph(epred = (ed) => champs.contains(ed.attr.get("hisChampion").getOrElse("")))
     println(graph.numEdges)
