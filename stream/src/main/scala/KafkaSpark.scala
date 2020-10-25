@@ -20,15 +20,6 @@ import org.apache.spark.sql.cassandra._
 import com.datastax.spark.connector._
 import com.datastax.driver.core.{Session, Cluster, Host, Metadata}
 import com.datastax.spark.connector.streaming._
-//import java.util.{Date, Properties}
-//import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, ProducerConfig}
-
-/*
-import org.apache.spark.sql.cassandra._
-import com.datastax.spark.connector._
-import com.datastax.driver.core.{Session, Cluster, Host, Metadata}
-import com.datastax.spark.connector.streaming._
-*/
 
 import scala.collection.mutable._
 
@@ -125,7 +116,7 @@ object KafkaSpark {
         import sparkSession.implicits._
         val toSave = sparkSession.createDataset(rdd)
         toSave.show()
-        toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges")
+        toSave.write.format("csv").mode("append").save(Config.PATH + "edges")
       }
     })
 
@@ -133,9 +124,9 @@ object KafkaSpark {
       println("VERTEX:")
       //rdd.foreach(println)
       import sparkSession.implicits._
-      val toSave = sparkSession.createDataset(rdd).distinct().coalesce(1)
+      val toSave = sparkSession.createDataset(rdd).distinct().repartition(1)
       toSave.show()
-      toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertexes")
+      toSave.write.format("csv").mode("append").save(Config.PATH + "vertexes")
     })
 
     // Start the Spark Job
