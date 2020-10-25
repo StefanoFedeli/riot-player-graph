@@ -74,7 +74,7 @@ object KafkaSpark {
     val session = cluster.connect()
     session.execute("CREATE KEYSPACE IF NOT EXISTS riot WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor':1};")
     session.execute("CREATE TABLE IF NOT EXISTS riot.stats ( slot timestamp PRIMARY KEY, duration float, red_win int, tot_matches int);")
-    session.execute("CREATE TABLE IF NOT EXISTS riot.champ ( champion text PRIMARY KEY, count bigint);")
+    session.execute("CREATE TABLE IF NOT EXISTS riot.champ (champion text PRIMARY KEY , count bigint);")
     session.execute("TRUNCATE riot.champ;")
     session.execute("TRUNCATE riot.stats;")
     println("...DONE!")
@@ -125,7 +125,7 @@ object KafkaSpark {
         import sparkSession.implicits._
         val toSave = sparkSession.createDataset(rdd)
         toSave.show()
-        toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/edges")
+        toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/edges")
       }
     })
 
@@ -135,7 +135,7 @@ object KafkaSpark {
       import sparkSession.implicits._
       val toSave = sparkSession.createDataset(rdd).distinct().coalesce(1)
       toSave.show()
-      toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/vertexes")
+      toSave.write.format("csv").mode("append").save("hdfs://127.0.0.1:9000/user/stefano/graph-riot/vertexes")
     })
 
     // Start the Spark Job

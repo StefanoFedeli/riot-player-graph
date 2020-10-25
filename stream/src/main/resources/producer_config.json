@@ -1,6 +1,6 @@
 {
-  "API_KEY1": "RGAPI-0cea9190-4d7c-4eb2-98b0-c7fc3a568251",
-  "API_KEY2": "RGAPI-b78b7558-fa69-433d-898a-d61a16193374",
+  "API_KEY1": "RGAPI-99e83bef-ac61-4842-80e6-229074ce820a",
+  "API_KEY2": "RGAPI-86b25769-c40e-4f27-8e11-562fce129130",
   "ENDPOINT_MATCH_LIST_BY_ACCOUNT": "https://euw1.api.riotgames.com/lol/match/v4/matchlists/by-account/",
   "ENDPOINT_MATCH_BY_GAME_ID": "https://euw1.api.riotgames.com/lol/match/v4/matches/",
   "ENDPOINT_NAME_BY_ACCOUNT": "https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-account/",

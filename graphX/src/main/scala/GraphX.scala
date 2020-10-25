@@ -6,9 +6,9 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{Dataset, SparkSession, DataFrame}
 import org.apache.spark.sql.types.{StructField, StructType, StringType, LongType, BooleanType}
 import org.neo4j.spark._
-
 import com.datastax.spark.connector._
-import com.datastax.driver.core.{Session, Cluster, Host, Metadata}
+import com.datastax.spark.connector.rdd.CassandraRDD
+import com.datastax.spark.connector.CassandraRow
 
 import scala.io.Source
 
@@ -44,7 +44,12 @@ object graphx {
     val sc = sparkSession.sparkContext
     sc.setLogLevel("WARN")
 
-    import sparkSession.implicits._
+    val CassRDD: CassandraRDD[CassandraRow] = sc.cassandraTable("riot", "champ")
+    CassRDD.foreach(println)
+    val smallList: CassandraRDD[CassandraRow] = CassRDD.sortBy((pair => pair.getInt("count")), false).take(8)
+    smallList.foreach(println)
+
+    /*import sparkSession.implicits._
     val fileEdge : Dataset[(Long,Long,String,String,String)] = sparkSession.read.format("csv").schema(getSchemaEdges()).load("hdfs://127.0.0.1:9000/user/dataintensive/graph-riot/edges").as[(Long,Long,String,String,String)]
     val edgesRDD: RDD[Edge[Map[String,String]]] = fileEdge.map(str => new Edge(str._1,str._2, Map("myChampion" -> str._3,
                                                                                               "hisChampion" -> str._4,
@@ -62,15 +67,7 @@ object graphx {
     println("DI CUI TRACCIATI: " + graph.vertices.filter{ case (id,(name,track)) => track == true}.count())
 
 
-    val winsGraph = graph.outerJoinVertices(graph.inDegrees) {
-      case (id, old, wins) => (old._1,old._2,wins.getOrElse(0)/5)
-    }
-    //graph.edges.foreach(item => print(item.attr.get("myChampion").getOrElse("").getClass))
-
-    println(sc.cassandraTable("riot", "champ").as((String, Int)).first())
-    //"SELECT champion from riot.champ ORDER BY count DESC LIMIT 5"
-
-    val champs: List[String] = List("350", "80", "360", "40", "236")
+      val champs: List[String] = List("350", "80", "360", "40", "236")
     val samiraSubGraph = graph.subgraph(epred = (ed) => champs.contains(ed.attr.get("hisChampion").getOrElse("")))
     println(graph.numEdges)
     println(samiraSubGraph.numEdges)
@@ -81,9 +78,9 @@ object graphx {
 
 
     //Save result on Neo4J
-    Neo4jGraph.saveGraph(sc,toDisplay2,"name",("WINNER_WAS_PLAYING","myChampion"),Some(("USER","id")),Some(("USER","id")),merge=true)
+    //Neo4jGraph.saveGraph(sc,toDisplay2,"name",("WINNER_WAS_PLAYING","myChampion"),Some(("USER","id")),Some(("USER","id")),merge=true)
     println("Saved")
-
+*/
     sc.stop()
   }
 }
