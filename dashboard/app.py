@@ -26,17 +26,12 @@ df = pd.DataFrame(session.execute('SELECT * FROM champ'))
 print(df.head())
 #df['champion'] = pd.to_numeric(df['champion'])
 champs = df[df["champion"] != '-1']
-fig = px.bar(champs, x="champion", y="count")
-fig.update_xaxes(type='category')
-fig.update_xaxes(categoryorder='total ascending')
+banChart = px.bar(champs, x="champion", y="count")
+banChart.update_xaxes(type='category')
+banChart.update_xaxes(categoryorder='total ascending')
 
 df = pd.DataFrame(session.execute('SELECT * FROM stats'))
-print(df)
-df['duration'] = df['duration'] / df['tot_matches']
-
-timeline = go.Figure(data=go.Scatter(x=df['slot'], y=df['duration']))
-
-df = pd.DataFrame(session.execute('SELECT * FROM stats'))
+print(df.head())
 total_length = df["duration"].sum()
 total_matches = df["tot_matches"].sum()
 indicator = go.Figure(go.Indicator(
@@ -45,25 +40,25 @@ indicator = go.Figure(go.Indicator(
     number = {'suffix': "min"},
     delta = {'position': "top", 'reference': 25},
     domain = {'x': [0, 1], 'y': [0, 1]}))
-indicator.update_layout(paper_bgcolor = "lightgray")
 
-app.layout = html.Div(children=[
-    html.H1(children='League of Legends'),
+df = pd.DataFrame(session.execute('SELECT * FROM stats'))
+red_wins = df["red_win"].sum()
+blue_wins = total_matches - red_wins
+winDf = pd.DataFrame({'Side':['Red Side', 'Blue Side'], 'Data':[red_wins, blue_wins]})
+pie = px.pie(winDf, values='Data', names='Side', color='Side', color_discrete_map={'Red Side':'light_red','Blue Side':'light_blue'})
 
-    dcc.Graph(
-        id='Champion\'s ban ',
-        figure=fig
-    ),
+app.layout = html.Div([
+    html.H1(children='League of Legends Stats Live Dashboard'),
+    dcc.Graph(id='Champion\'s ban ', figure=banChart),
+    html.Div([
+        html.Div([
+            dcc.Graph(id='Game Duration', figure=indicator)],
+            style = {'column-count': 3, 'width': '50%'}),
+        html.Div([
+            dcc.Graph(id='Wins by side', figure=pie)],
+            style = {'column-count': 3, 'width': '50%'})
+        ])
 
-    dcc.Graph(
-        id='duration Game',
-        figure=timeline
-    ),
-
-    dcc.Graph(
-            id='duration Game2',
-            figure=indicator
-        )
 ])
 
 if __name__ == '__main__':

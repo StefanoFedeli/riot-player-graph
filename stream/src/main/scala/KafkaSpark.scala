@@ -91,6 +91,7 @@ object KafkaSpark {
     val matches: DStream[Match] = kafkaRawStream.map(newRecord => new Match(newRecord.value))
     
     val metaStream: DStream[(String, Int)] = matches.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
+    println(metaStream)
     metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
 
     //Get insight in a 5 minutes stream and save the time-series

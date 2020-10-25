@@ -10,7 +10,7 @@ import scala.math.BigInt
 import scala.collection.mutable._
 import scala.io.Source
 
-class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOINT_MATCH_LIST_BY_ACCOUNT: String, val ENDPOINT_MATCH_BY_GAME_ID: String, val ENDPOINT_NAME_BY_ACCOUNT: String, val summonerId: String, val summonerName: String) extends Thread{
+class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOINT_MATCH_LIST_BY_ACCOUNT: String, val ENDPOINT_MATCH_BY_GAME_ID: String, val ENDPOINT_NAME_BY_ACCOUNT: String, val summonerId: String, val summonerName: String, val champMapping: scala.collection.immutable.Map[String, String]) extends Thread{
 
   //var timestamp: Long = System.currentTimeMillis - 3600000
   var timestamp: Long = 0
@@ -104,10 +104,10 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
 
       val bannedChamps = ListBuffer[String]()
       for (c: ujson.Value <- ban0){
-        bannedChamps += c("championId").num.toInt.toString
+        bannedChamps += champMapping.get(c("championId").num.toInt.toString).getOrElse("None")
       }
       for (c: ujson.Value <- ban1){
-        bannedChamps += c("championId").num.toInt.toString
+        bannedChamps += champMapping.get(c("championId").num.toInt.toString).getOrElse("None")
       }
 
       val edges = ListBuffer[ujson.Obj]()
@@ -160,8 +160,8 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
           val content: (String, String) = mapping.getOrElse(p("participantId").num.toInt.toString, ("", ""))
           if (content._2 != summonerName) {
             val toAdd = ujson.Obj("hisSummonerId" -> content._1, "hisSummonerName" -> content._2,
-                                "myChampionId" -> myChampId, "mySummonerID" -> summonerId, "mySummonerName" -> summonerName,
-                                "hisChampionId" -> p("championId").num.toInt.toString,
+                                "myChampionId" -> new ujson.Str(champMapping.get(myChampId).getOrElse("None")), "mySummonerID" -> summonerId, "mySummonerName" -> summonerName,
+                                "hisChampionId" -> new ujson.Str(champMapping.get(p("championId").num.toInt.toString).getOrElse("None")),
                                 "outcome" -> outcome, "competition" -> competition
             )
             edges += toAdd
