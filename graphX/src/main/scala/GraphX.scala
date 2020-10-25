@@ -76,11 +76,10 @@ object graphx {
     print(smallChamp(0))
     smallChamp.foreach(champ => print(", " + champ))
     println()
-    val bannedSubGraph = graph.subgraph(epred = (ed) => smallChamp.contains(ed.attr.get("hisChampion").getOrElse("")))
-    //println(subsubgraph.inDegrees.count)
+    val bannedSubGraph = graph.subgraph(epred = (ed) => ed.attr.get("Side")=="Against").subgraph(epred=ed => smallChamp.contains(ed.attr.get("hisChampion").getOrElse("")) || smallChamp.contains(ed.attr.get("myChampion").getOrElse("")))
     val smallBannedGraph = bannedSubGraph.mapVertices((v_id, v) => v._1)
     val champRelGraph = smallBannedGraph.mapEdges(e => e.attr.get("myChampion").getOrElse("No Champ"))
-    val relGraph = smallBannedGraph.mapEdges(e => e.attr.get("Side").getOrElse("No Info"))
+    //val relGraph = smallBannedGraph.mapEdges(e => e.attr.get("Side").getOrElse("No Info"))
     val trackedGraph = bannedSubGraph.outerJoinVertices(bannedSubGraph.inDegrees) {
                         case (id, u, inDegOpt) =>(u._1, u._2, inDegOpt.getOrElse(0))
                       }.outerJoinVertices(bannedSubGraph.outDegrees) {
@@ -92,8 +91,8 @@ object graphx {
 
 
     //Save result on Neo4J
-    Neo4jGraph.saveGraph(sc,champRelGraph,"name",("WINNER_WAS_PLAYING","myChampion"),Some(("USER","id")),Some(("USER","id")),merge=true)
-    Neo4jGraph.saveGraph(sc,relGraph,"name",("SIDE","played"),Some(("USER","id")),Some(("USER","id")),merge=true)
+    Neo4jGraph.saveGraph(sc,champRelGraph,"name",("BEAT","myChampion"),Some(("USER","id")),Some(("USER","id")),merge=true)
+    //Neo4jGraph.saveGraph(sc,relGraph,"name",("SIDE","played"),Some(("USER","id")),Some(("USER","id")),merge=true)
     println("Saved")
 
     sparkSession.close()
