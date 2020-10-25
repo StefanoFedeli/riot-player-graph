@@ -27,6 +27,7 @@ object Orchestrator {
     val playerMap: Map[String, String] = generatePlayerMap(ENDPOINT_ACCOUNT_BY_NAME, API_KEY2, playerList)
 
     val factory = new playerDataProducerFactory(API_KEY1, API_KEY2, ENDPOINT_MATCH_LIST_BY_ACCOUNT, ENDPOINT_MATCH_BY_GAME_ID, ENDPOINT_NAME_BY_ACCOUNT, playerMap)
+
     print("DONE! \n Preparing producers...")
     factory.buildRetrievers()
     print("....Producers Ready....")

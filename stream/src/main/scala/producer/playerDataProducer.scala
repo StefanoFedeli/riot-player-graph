@@ -1,12 +1,14 @@
 package scala.producer
 
+import java.io.InputStream
 import java.util.{Date, Properties}
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, ProducerConfig}
+
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+
 import scala.util.Random
-import kafka.producer.KeyedMessage
-import ujson.Value
 import scala.math.BigInt
 import scala.collection.mutable._
+import scala.io.Source
 
 class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOINT_MATCH_LIST_BY_ACCOUNT: String, val ENDPOINT_MATCH_BY_GAME_ID: String, val ENDPOINT_NAME_BY_ACCOUNT: String, val summonerId: String, val summonerName: String) extends Thread{
 
@@ -21,6 +23,8 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
   val producer = new KafkaProducer[String, String](props)
 
   val TOPIC = "matches"
+
+
 
   override def run(): Unit = {
 

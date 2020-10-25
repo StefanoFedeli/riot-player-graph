@@ -23,6 +23,7 @@ session = cluster.connect('riot')
 session.row_factory = dict_factory
 
 df = pd.DataFrame(session.execute('SELECT * FROM champ'))
+print(df.head())
 #df['champion'] = pd.to_numeric(df['champion'])
 champs = df[df["champion"] != '-1']
 fig = px.bar(champs, x="champion", y="count")
@@ -36,7 +37,7 @@ df['duration'] = df['duration'] / df['tot_matches']
 timeline = go.Figure(data=go.Scatter(x=df['slot'], y=df['duration']))
 
 app.layout = html.Div(children=[
-    html.H1(children='League of Legend'),
+    html.H1(children='League of Legends'),
 
     html.Div(children='''
         Dash: A web application framework for Python.
