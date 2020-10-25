@@ -5,5 +5,7 @@
   "ENDPOINT_MATCH_BY_GAME_ID": "https://euw1.api.riotgames.com/lol/match/v4/matches/",
   "ENDPOINT_NAME_BY_ACCOUNT": "https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-account/",
   "ENDPOINT_NAME_BY_DIVISION": "https://euw1.api.riotgames.com/lol/league-exp/v4/entries/RANKED_SOLO_5x5/CHALLENGER/I?page=1",
-  "ENDPOINT_ACCOUNT_BY_NAME": "https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/"
+  "ENDPOINT_ACCOUNT_BY_NAME": "https://euw1.api.riotgames.com/lol/summoner/v4/summoners/by-name/",
+  "MODE": "fake",
+  "NUM_PLAYERS": 20
 }

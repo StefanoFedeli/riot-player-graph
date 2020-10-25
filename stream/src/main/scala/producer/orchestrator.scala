@@ -22,11 +22,14 @@ object Orchestrator {
     val ENDPOINT_NAME_BY_ACCOUNT = json("ENDPOINT_NAME_BY_ACCOUNT").str
     val ENDPOINT_NAME_BY_DIVISION = json("ENDPOINT_NAME_BY_DIVISION").str
     val ENDPOINT_ACCOUNT_BY_NAME = json("ENDPOINT_ACCOUNT_BY_NAME").str
+    val mode = json("MODE").str
+    val numPlayers = json("NUM_PLAYERS").num.toInt
 
-    val playerList: ListBuffer[String] = generatePlayerList(ENDPOINT_NAME_BY_DIVISION, API_KEY1).take(15)
+    //NB THE NUMBER OF PLAYERS HAS TO BE 20 DUE TO API RATE LIMITATIONS, DO NOT SET MORE THAN 20 PLAYERS
+    val playerList: ListBuffer[String] = generatePlayerList(ENDPOINT_NAME_BY_DIVISION, API_KEY1).take(numPlayers)
     val playerMap: Map[String, String] = generatePlayerMap(ENDPOINT_ACCOUNT_BY_NAME, API_KEY2, playerList)
 
-    val factory = new playerDataProducerFactory(API_KEY1, API_KEY2, ENDPOINT_MATCH_LIST_BY_ACCOUNT, ENDPOINT_MATCH_BY_GAME_ID, ENDPOINT_NAME_BY_ACCOUNT, playerMap)
+    val factory = new playerDataProducerFactory(API_KEY1, API_KEY2, ENDPOINT_MATCH_LIST_BY_ACCOUNT, ENDPOINT_MATCH_BY_GAME_ID, ENDPOINT_NAME_BY_ACCOUNT, playerMap, mode)
 
     print("DONE! \n Preparing producers...")
     factory.buildRetrievers()
@@ -39,7 +42,6 @@ object Orchestrator {
   def generatePlayerList(ENDPOINT_NAME_BY_DIVISION: String, API_KEY1: String): ListBuffer[String] = {
     print("Generating PlayerList...")
     val r = requests.get(ENDPOINT_NAME_BY_DIVISION + "&api_key=" + API_KEY1)
-    Thread.sleep(1200)
     val playerList: ListBuffer[String] = ListBuffer[String]()
     if (r.statusCode < 400) {
       val json = ujson.read(r.text)
@@ -57,11 +59,14 @@ object Orchestrator {
     var i: Int = 0
     for (p: String <- playerList) {
       println("Querying player " + i.toString + " of " + playerList.size.toString)
-      val r = requests.get(ENDPOINT_ACCOUNT_BY_NAME + p + "?api_key=" + API_KEY2)
-      Thread.sleep(1200)
+      val r = requests.get(ENDPOINT_ACCOUNT_BY_NAME + p.replace(" ","%20") + "?api_key=" + API_KEY2)
       if (r.statusCode < 400) {
         val json = ujson.read(r.text)
         playerMap += (p -> json("accountId").str)
+      } else {
+        println("Problem with API, Rate Limit Exceded")
+        println(r.text)
+        println(ENDPOINT_ACCOUNT_BY_NAME + p + "?api_key=" + API_KEY2)
       }
       i += 1
     }

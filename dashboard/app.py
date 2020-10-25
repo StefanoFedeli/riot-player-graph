@@ -3,6 +3,7 @@
 # Run this app with `python app.py` and
 # visit http://127.0.0.1:8050/ in your web browser.
 
+import time
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -25,10 +26,14 @@ session = cluster.connect('riot')
 session.row_factory = dict_factory
 
 df = pd.DataFrame(session.execute('SELECT * FROM champ'))
+while df.empty:
+    df = pd.DataFrame(session.execute('SELECT * FROM champ'))
+    print("No data received yet...")
+    time.sleep(60)
 print(df.head())
 #df['champion'] = pd.to_numeric(df['champion'])
 champs = df[df["champion"] != '-1']
-banChart = px.bar(champs.sort_values(by="count", ascending=False).head(30), x="champion", y="count")
+banChart = px.bar(champs.sort_values(by="count", ascending=False).head(15), x="champion", y="count")
 banChart.update_xaxes(type='category')
 banChart.update_xaxes(categoryorder='total ascending')
 banChart.update_layout(margin_t=5)
@@ -91,7 +96,7 @@ def update(n_intervals):
     print(df.head())
     #df['champion'] = pd.to_numeric(df['champion'])
     champs = df[df["champion"] != '-1']
-    banChart = px.bar(champs.sort_values(by="count", ascending=False).head(30), x="champion", y="count")
+    banChart = px.bar(champs.sort_values(by="count", ascending=False).head(15), x="champion", y="count")
     banChart.update_xaxes(type='category')
     banChart.update_xaxes(categoryorder='total ascending')
     banChart.update_layout(margin_t=5)
