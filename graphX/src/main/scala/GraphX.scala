@@ -73,10 +73,22 @@ object graphx {
 
     //Our Analysis based on
     println("REAL-TIME DATA STATE THOSE ARE THE MOST BANNED CHAMPIONS:")
-    print(smallChamp(0))
-    smallChamp.foreach(champ => print(", " + champ))
+    smallChamp.foreach(champ => print(champ + "  "))
     println()
-    val bannedSubGraph = graph.subgraph(epred = (ed) => ed.attr.get("Side")=="Against").subgraph(epred=ed => smallChamp.contains(ed.attr.get("hisChampion").getOrElse("")) || smallChamp.contains(ed.attr.get("myChampion").getOrElse("")))
+
+    println("TO PUT IN NEO4J:")
+    println()
+    print("MATCH(n)-[r:BEAT]->(m) where ")
+    smallChamp.foreach(champ => print("r.myChampion <> \"" + champ + "\" or "))
+    println("1=0 return n;")
+    println()
+    /*
+    MATCH(n)-[r:BEAT]->(m)
+    where r.myChampion <> "Samira" or r.myChampion <> "Karthus" or r.myChampion <> "Nidalee"
+    return n;
+     */
+    val bannedSubGraph = graph.subgraph(epred = (ed) => ed.attr.get("Side").getOrElse("None") == "Against").subgraph(epred=ed => smallChamp.contains(ed.attr.get("hisChampion").getOrElse("")) || smallChamp.contains(ed.attr.get("myChampion").getOrElse("")))
+
     val smallBannedGraph = bannedSubGraph.mapVertices((v_id, v) => v._1)
     val champRelGraph = smallBannedGraph.mapEdges(e => e.attr.get("myChampion").getOrElse("No Champ"))
     //val relGraph = smallBannedGraph.mapEdges(e => e.attr.get("Side").getOrElse("No Info"))

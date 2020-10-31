@@ -50,11 +50,11 @@ object KafkaSpark {
       .master("local[*]")
       .appName("RiotLOLGraph")
       .config("spark.cassandra.connection.host", "localhost")
-      .config("spark.cassandra.connection.keep_alive_ms","60000")
+      .config("spark.cassandra.connection.keep_alive_ms","360000")
       .getOrCreate()
     sparkSession.sparkContext.setLogLevel("WARN")
-    //val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Minutes(1))
-    val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Seconds(30))
+    val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Minutes(5))
+    //val sparkStreamingContext = new StreamingContext(sparkSession.sparkContext, Seconds(30))
 
     //Run the Kafka producers
     Orchestrator.run()
@@ -91,10 +91,11 @@ object KafkaSpark {
     val matches: DStream[Match] = kafkaRawStream.map(newRecord => new Match(newRecord.value))
     
     val metaStream: DStream[(String, Int)] = matches.map(m => m.banList).flatMap(e => e).map(champ => (champ, 1)).mapWithState(StateSpec.function(mappingFunc _))
+    println(metaStream)
     metaStream.saveToCassandra("riot", "champ", SomeColumns("champion", "count"))
 
     //Get insight in a 5 minutes stream and save the time-series
-    val matchesAgg: DStream[Match] = matches.window(Minutes(5))
+    val matchesAgg: DStream[Match] = matches.window(Minutes(30))
     val durationAvg: DStream[(Long, Float)] = matchesAgg.map(m => m.duration).reduce((x,y) => x + y).map(tot => (getSystemTime(true),tot))
     val winRedTeam: DStream[(Long, Long)] = matchesAgg.filter(m => m.winTeam == "Red").count().map(tot => (getSystemTime(false),tot))
     val totalMatches: DStream[(Long, Long)] = matchesAgg.count().map(tot => (getSystemTime(false),tot))

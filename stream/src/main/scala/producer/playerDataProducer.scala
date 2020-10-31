@@ -1,17 +1,25 @@
 package scala.producer
 
+import java.io.InputStream
 import java.util.{Date, Properties}
-import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord, ProducerConfig}
+
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+
 import scala.util.Random
-import kafka.producer.KeyedMessage
-import ujson.Value
 import scala.math.BigInt
 import scala.collection.mutable._
+import scala.io.Source
 
-class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOINT_MATCH_LIST_BY_ACCOUNT: String, val ENDPOINT_MATCH_BY_GAME_ID: String, val ENDPOINT_NAME_BY_ACCOUNT: String, val summonerId: String, val summonerName: String) extends Thread{
+class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOINT_MATCH_LIST_BY_ACCOUNT: String, val ENDPOINT_MATCH_BY_GAME_ID: String, val ENDPOINT_NAME_BY_ACCOUNT: String, val summonerId: String, val summonerName: String, val champMapping: scala.collection.immutable.Map[String, String], val mode: String) extends Thread{
 
-  //var timestamp: Long = System.currentTimeMillis - 3600000
   var timestamp: Long = 0
+
+  if (mode == "real") {
+    timestamp = System.currentTimeMillis - 3600000
+  }
+  else if (mode == "fake") {
+    timestamp = System.currentTimeMillis - (3600000 * 48)
+  }
 
   val props = new Properties()
   props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
@@ -22,48 +30,65 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
 
   val TOPIC = "matches"
 
+
+
   override def run(): Unit = {
 
     while (true) {
 
-      val newTimeStamp = System.currentTimeMillis
+      var newTimestamp: Long = 0
 
-      retrieveGames(timestamp.toString)
+      if (mode == "real") {
+        newTimestamp = System.currentTimeMillis
+      }
+      else if (mode == "fake") {
+        newTimestamp = timestamp + 8640000
+      }
 
-      timestamp = newTimeStamp
+      retrieveGames(timestamp)
 
-      Thread.sleep(150000)
+      timestamp = newTimestamp
+
+      Thread.sleep(180000)
     }
     producer.close()
 
 
   }
 
-  def retrieveGames(beginTime: String): Unit = {
-    val r = requests.get(ENDPOINT_MATCH_LIST_BY_ACCOUNT + summonerId + "?queue=420&beginTime=" + beginTime + "&api_key=" + API_KEY2)
-    Thread.sleep(1200)
+  def retrieveGames(beginTime: Long): Unit = {
+    var url: String = ""
+    if (mode == "real") {
+      url = ENDPOINT_MATCH_LIST_BY_ACCOUNT + summonerId + "?queue=420&beginTime=" + beginTime + "&api_key=" + API_KEY2
+    }
+    else if (mode == "fake") {
+      url = ENDPOINT_MATCH_LIST_BY_ACCOUNT + summonerId + "?queue=420&beginTime=" + beginTime + "&endTime=" + (beginTime + 8640000) + "&api_key=" + API_KEY2
+    }
+
+    val r = requests.get(url)
+
+    //  Thread.sleep(1200)
     if (r.statusCode < 400) {
       val json = ujson.read(r.text)
       val maxIndex = json("endIndex").num.toInt - 1
 
-      println("Player " + summonerName + " starts retriving 5 Games //TODO FIX IT FOR PRODUCTION")
-      for (index <- 0 to 5){//maxIndex){
+      println("Player " + summonerName + " starts retrieving games")
+      for (index <- 0 to maxIndex){//maxIndex){
         val game = json("matches")(index)("gameId").num.toLong.toString
         retrieveGameData(game)
         Thread.sleep(11000)
       }
     }
     else {
-      println("ERRRRRROR")
-      println(r.statusCode)
-      println(r.text)
+      println("Player " + summonerName + " has not played any game in the last 3 minutes")
     }
   }
 
   def retrieveGameData(gameId: String): Unit = {
     val r = requests.get(ENDPOINT_MATCH_BY_GAME_ID + gameId + "?api_key=" + API_KEY1)
-    Thread.sleep(1200)
+    //Thread.sleep(1200)
     if (r.statusCode < 400) {
+
       val json = ujson.read(r.text)
       val players = json("participantIdentities").arr
       val participants = json("participants").arr
@@ -100,10 +125,10 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
 
       val bannedChamps = ListBuffer[String]()
       for (c: ujson.Value <- ban0){
-        bannedChamps += c("championId").num.toInt.toString
+        bannedChamps += champMapping.get(c("championId").num.toInt.toString).getOrElse("None")
       }
       for (c: ujson.Value <- ban1){
-        bannedChamps += c("championId").num.toInt.toString
+        bannedChamps += champMapping.get(c("championId").num.toInt.toString).getOrElse("None")
       }
 
       val edges = ListBuffer[ujson.Obj]()
@@ -156,8 +181,8 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
           val content: (String, String) = mapping.getOrElse(p("participantId").num.toInt.toString, ("", ""))
           if (content._2 != summonerName) {
             val toAdd = ujson.Obj("hisSummonerId" -> content._1, "hisSummonerName" -> content._2,
-                                "myChampionId" -> myChampId, "mySummonerID" -> summonerId, "mySummonerName" -> summonerName,
-                                "hisChampionId" -> p("championId").num.toInt.toString,
+                                "myChampionId" -> new ujson.Str(champMapping.get(myChampId).getOrElse("None")), "mySummonerID" -> summonerId, "mySummonerName" -> summonerName,
+                                "hisChampionId" -> new ujson.Str(champMapping.get(p("championId").num.toInt.toString).getOrElse("None")),
                                 "outcome" -> outcome, "competition" -> competition
             )
             edges += toAdd
@@ -177,6 +202,8 @@ class playerDataProducer(val API_KEY1: String, val API_KEY2: String, val ENDPOIN
       producer.send(data)
     }
     else {
+      println("Failed call to: " + ENDPOINT_MATCH_BY_GAME_ID + gameId + "?api_key=" + API_KEY1)
+      println(r.text)
     }
   }
 
